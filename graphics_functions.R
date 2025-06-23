@@ -500,3 +500,225 @@ get_density2d_spatstat <- function(data,
   
   fit
 }
+
+
+
+
+#' ggshape_heatmap – Circle-based Heat-map with Optional Clustering
+#'
+#' Draws a heat-map where each matrix element is represented by a glyph whose
+#' **fill colour** encodes a numeric value and whose **size** encodes a second
+#' numeric value.  Rows and/or columns can be hierarchically clustered before
+#' plotting to reveal structure.
+#'
+#' @section Dependencies:
+#'   * **ggplot2** – plotting backend
+#'   * **colorspace** – for perceptual lightening/darkening of outline colours
+#'
+#' @param data `matrix` **(square)** \cr
+#'   Numeric matrix providing the fill-colour values.  The matrix must be
+#'   square (same number of rows and columns).
+#'
+#' @param data_sizes `matrix`, *optional* \cr
+#'   Numeric matrix providing the glyph-size values.  Must be the same shape as
+#'   `data`.  If `NULL` (default) the function uses `data` itself, so size is
+#'   proportional to the magnitude of the colour values.
+#'
+#' @param shape_values `integer(1)` \cr
+#'   Point shape code passed to **ggplot2**.  Values `21–25` are filled shapes
+#'   with an outline and therefore the most useful (default `22`, a square).
+#'
+#' @param size_range `numeric(2)` \cr
+#'   Minimum and maximum point size on the plot.
+#'
+#' @param colorscheme `character` or `function` \cr
+#'   Either a vector of colours (hex or R-named) or a palette function (e.g.
+#'   one returned by `colorRampPalette()`).  Determines the gradient used to
+#'   fill the glyphs.
+#'
+#' @param value_label `character(1)` \cr
+#'   Legend title for the colour scale.
+#'
+#' @param size_label `character(1)` \cr
+#'   Legend title for the size scale.
+#'
+#' @param row_label `character(1)` \cr
+#'   Y-axis label.
+#'
+#' @param column_label `character(1)` \cr
+#'   X-axis label.
+#'
+#' @param title `character(1)` \cr
+#'   Plot title.
+#'
+#' @param theme_choice `ggplot2` theme \cr
+#'   A complete ggplot2 theme object to apply.  Default: `theme_minimal()`.
+#'
+#' @param legend.key.size, legend.text.size Numeric.  Passed to `theme()` to
+#'   tweak legend key dimensions and title text size, respectively.
+#'
+#' @param cluster_by `character(1)` or `NULL` \cr
+#'   Which matrix to use when computing distances for clustering:  
+#'   * `'data'` – colour matrix (default)  
+#'   * `'data_sizes'` – size matrix  
+#'   * `'both'` – sum of the two distance matrices  
+#'   * `NULL` – equivalent to `'data'`.
+#'
+#' @param cluster_rows, cluster_cols `logical(1)` \cr
+#'   Should rows and/or columns be hierarchically clustered and reordered in
+#'   the plot?
+#'
+#' @param na_rm `logical(1)` \cr
+#'   If `TRUE`, removes `NA` values before plotting.
+#'
+#' @param text.angle.x, text.angle.y `numeric(1)` \cr
+#'   Rotation angles (degrees) for axis tick labels.
+#'
+#' @param darken_outline_color_coeff `numeric(1)` \cr
+#'   Coefficient for darkening (`>0`) or lightening (`<0`) the outline colour
+#'   relative to the fill.  Use `0` for no change.  Values are interpreted by
+#'   **colorspace**’s `darken()` / `lighten()` with `method = "relative"`.
+#'
+#' @param grid.pars `list` \cr
+#'   Three optional components controlling panel grid lines:  
+#'   * `grid.size`   – line width (set ≤0 to remove)  
+#'   * `grid.color`  – colour  
+#'   * `grid.linetype` – linetype string (`"solid"`, `"dashed"`, …).
+#'
+#' @return A **ggplot** object.
+#'
+#' @examples
+#' if (requireNamespace("ggplot2", quietly = TRUE)) {
+#'   set.seed(1)
+#'   n  <- 6
+#'   cm <- matrix(runif(n*n, -1, 1), n)
+#'   sm <- matrix(abs(rnorm(n*n, 5, 2)), n)
+#'   rownames(cm) <- colnames(cm) <- paste0("Sample", 1:n)
+#'   rownames(sm) <- colnames(sm) <- rownames(cm)
+#'   ggshape_heatmap(cm, sm, cluster_rows = TRUE, cluster_cols = TRUE)
+#' }
+#'
+#' @export
+#' @import ggplot2
+#' @importFrom colorspace darken lighten
+
+ggshape_heatmap <- function(
+    data,
+    data_sizes  = NULL,
+    shape_values = 22,
+    size_range   = c(2, 8),
+    colorscheme  = rev(c('#9C0824','#BF1316','#D42922','#E96251','#EBA49A','#B0B0B0','#838383','#5D5D5D', '#3B3B3B' ,'#1E1E1E')) ,
+    value_label  = "Value",
+    size_label   = "Size",
+    row_label    = "Sample",
+    column_label = "Measurement",
+    title        = "ggCircle",
+    theme_choice    = ggplot2::theme_minimal(),
+    legend.key.size = 0.5,
+    legend.text.size = 11,
+    cluster_by   = "data",
+    cluster_rows = FALSE,
+    cluster_cols = FALSE,
+    na_rm     = FALSE,
+    text.angle.x = 0,
+    text.angle.y = 0,
+    darken_outline_color_coeff = -1,
+    grid.pars = list(grid.size = 0.15,
+                     grid.color = "#dddddd",
+                     grid.linetype = "solid")
+) {
+  `%||%` <- function(a, b) if (!is.null(a)) a else b
+  
+  if (is.null(data_sizes)) data_sizes <- data
+  if (!is.matrix(data))       data       <- as.matrix(data)
+  if (!is.matrix(data_sizes)) data_sizes <- as.matrix(data_sizes)
+  
+  stopifnot(identical(dim(data), dim(data_sizes)))
+  stopifnot(nrow(data) == ncol(data))
+  
+  if (is.null(rownames(data))) {
+    rn <- seq_len(nrow(data))
+    rownames(data) <- rownames(data_sizes) <- rn
+  }
+  if (is.null(colnames(data))) {
+    cn <- seq_len(ncol(data))
+    colnames(data) <- colnames(data_sizes) <- cn
+  }
+  
+  # --- clustering ---------------------------------------------------------
+  get_order <- function(mat, by_row = TRUE)
+    hclust(dist(if (by_row) mat else t(mat)), method = "complete")$order
+  
+  if (cluster_rows || cluster_cols) {
+    chosen <- switch(cluster_by %||% "data",
+                     data        = data,
+                     data_sizes  = data_sizes,
+                     both        = NULL,
+                     stop("cluster_by must be 'data', 'data_sizes', 'both', or NULL"))
+    
+    if (cluster_rows) {
+      ord <- if (is.null(chosen)) {
+        d <- as.matrix(dist(data)) + as.matrix(dist(data_sizes))
+        get_order(as.dist(d), TRUE)
+      } else get_order(chosen, TRUE)
+      data       <- data      [ord, , drop = FALSE]
+      data_sizes <- data_sizes[ord, , drop = FALSE]
+    }
+    if (cluster_cols) {
+      ord <- if (is.null(chosen)) {
+        d <- as.matrix(dist(t(data))) + as.matrix(dist(t(data_sizes)))
+        get_order(as.dist(d), TRUE)
+      } else get_order(chosen, FALSE)
+      data       <- data      [, ord, drop = FALSE]
+      data_sizes <- data_sizes[, ord, drop = FALSE]
+    }
+  }
+  
+  # --- outline palette ----------------------------------------------------
+  outline_colors <- if (darken_outline_color_coeff < 0)
+    colorspace::lighten(colorscheme, abs(darken_outline_color_coeff),
+                        space = "combined", method = "relative")
+  else if (darken_outline_color_coeff > 0)
+    colorspace::darken(colorscheme, darken_outline_color_coeff,
+                       space = "combined", method = "relative")
+  else colorscheme
+  
+  # --- long format (factor levels fixed) ----------------------------------
+  row_lev <- rownames(data)
+  col_lev <- colnames(data)
+  
+  df <- data.frame(
+    Row    = factor(rep(row_lev,  times = ncol(data)), levels = row_lev),
+    Column = factor(rep(col_lev, each  = nrow(data)), levels = col_lev),
+    Value  = as.vector(data),
+    Size   = as.vector(data_sizes),
+    stringsAsFactors = FALSE
+  )
+  if (na_rm) df <- stats::na.omit(df)
+  
+  # --- plot ---------------------------------------------------------------
+  p <- ggplot2::ggplot(df, aes(x = Column, y = Row)) +
+    ggplot2::geom_point(aes(fill = Value, size = Size, colour = Value),
+                        shape = shape_values) +
+    ggplot2::scale_size(range = size_range, name = size_label) +
+    ggplot2::scale_fill_gradientn(colours = colorscheme, name = value_label) +
+    ggplot2::scale_colour_gradientn(colours = outline_colors, guide = "none") +
+    theme_choice +
+    ggplot2::labs(title = title, x = column_label, y = row_label)
+  
+  grid_size     <- grid.pars$grid.size     %||% 0.15
+  grid_color    <- grid.pars$grid.color    %||% "#dddddd"
+  grid_linetype <- grid.pars$grid.linetype %||% "solid"
+  
+  p + ggplot2::theme(
+    panel.grid.major = if (grid_size > 0)
+      ggplot2::element_line(size = grid_size, colour = grid_color,
+                            linetype = grid_linetype)
+    else ggplot2::element_blank(),
+    panel.grid.minor = ggplot2::element_blank(),
+    axis.text.x      = ggplot2::element_text(angle = text.angle.x, hjust = 1),
+    axis.text.y      = ggplot2::element_text(angle = text.angle.y, hjust = 1),
+    legend.key.size  = grid::unit(legend.key.size, "cm"),
+    legend.title     = ggplot2::element_text(size = legend.text.size)
+  )
+}
