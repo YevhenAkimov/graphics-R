@@ -634,7 +634,7 @@ ggshape_heatmap <- function(
   if (!is.matrix(data_sizes)) data_sizes <- as.matrix(data_sizes)
   
   stopifnot(identical(dim(data), dim(data_sizes)))
-  stopifnot(nrow(data) == ncol(data))
+  
   
   if (is.null(rownames(data))) {
     rn <- seq_len(nrow(data))
