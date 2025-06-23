@@ -367,3 +367,136 @@ ggscatter_colored <- function(coords,
   
   plot_
 }
+
+
+
+
+#' Density estimation helpers using spatstat
+#'
+#' This script provides three helper functions for fast kernel density
+#' estimation of 2‑D point patterns using the **spatstat** family of packages
+#' (`ppp`, `density.ppp`, `owin`, `interp.im`).  
+
+NULL
+
+require(spatstat)
+#' Expand a numeric vector by symmetric margins
+#'
+#' Computes a two‑element numeric vector giving the lower and upper bounds of
+#' *x* expanded by *mult* × range(x).
+#'
+#' @param x     Numeric vector.
+#' @param mult  Numeric scalar ≥ 0. Fraction of the data range to be added as a
+#'              margin (default 0.1 = ±10 % of the range).
+#'
+#' @return Numeric vector of length 2: `c(min‑margin, max+margin)`.
+#' @export
+#'
+#' @examples
+#' get_plot_margins(1:10, mult = 0.2)
+get_plot_margins <- function(x, mult = 0.1) {
+  rng <- range(x)
+  d   <- diff(rng)
+  margin <- c(-d, d) * mult
+  rng + margin
+}
+
+#' Fast kernel density estimate for a point pattern
+#'
+#' Thin wrapper around [spatstat.explore::density.ppp()] that accepts raw x/y
+#' coordinates instead of a *ppp* object.
+#'
+#' @param umap   Two‑column numeric matrix / data frame with x/y coordinates.
+#' @param window [`spatstat.geom::owin`] object describing the observation
+#'               window.
+#' @param adjust Bandwidth adjustment factor passed to
+#'               [spatstat.explore::density.ppp()].
+#' @param at     Grid type: "pixels" or "points" (default "pixels").
+#' @param diggle Logical; if `TRUE` perform Diggle correction.
+#' @param weights Optional numeric vector of per‑point weights.
+#'
+#' @return A [`spatstat::im`] object.
+#' @export
+#'
+#' @examples
+
+get_dens_ppp <- function(umap,
+                         window,
+                         adjust  = 1,
+                         at      = "pixels",
+                         diggle  = FALSE,
+                         weights = NULL) {
+  
+
+  stopifnot(ncol(umap) == 2)
+  
+  pts <- spatstat.geom::ppp(x = umap[, 1],
+                            y = umap[, 2],
+                            window = window)
+  
+  spatstat.explore::density.ppp(pts,
+                             adjust = adjust,
+                             at     = at,
+                             diggle = diggle,
+                             weights = weights)
+}
+
+#' Convenience wrapper returning a full density image plus per‑point densities
+#'
+#' This helper chooses a suitable observation window (unless supplied),
+#' computes the pixel density image, its long format `(x, y, density)`, and the
+#' density values at the original data points.
+#'
+#' @param data    Two‑column numeric matrix / data frame with x/y coordinates.
+#' @param window  Optional [`spatstat.geom::owin`] object.  If `NULL`
+#'                the window is expanded by `margins` using [get_plot_margins()].
+#' @param adjust  Bandwidth adjustment factor (default 0.25).
+#' @param margins Numeric scalar; fraction of data range used as margin when
+#'                `window = NULL`.
+#' @param diggle  Logical; if `TRUE` perform Diggle correction.
+#' @param weights Optional numeric vector of per‑point weights.
+#'
+#' @return A list containing:
+#' \describe{
+#'   \item{`im`}{Pixel density image (inherits from class **im**).}
+#'   \item{`long_dens`}{`data.frame` with columns x, y, density.}
+#'   \item{`original_points_dens`}{`data.frame` with the original coordinates
+#'     and their density values.}
+#' }
+#' @export
+#'
+#' @examples
+
+get_density2d_spatstat <- function(data,
+                                       window  = NULL,
+                                       adjust  = 0.25,
+                                       margins = 0.1,
+                                       diggle  = FALSE,
+                                       weights = NULL) {
+  
+  stopifnot(ncol(data) == 2)
+  
+  if (is.null(window)) {
+    window <- spatstat.geom::owin(get_plot_margins(data[, 1], margins),
+                                  get_plot_margins(data[, 2], margins))
+  }
+  
+  fit <- get_dens_ppp(data,
+                      window  = window,
+                      adjust  = adjust,
+                      diggle  = diggle,
+                      weights = weights)
+  
+
+  fit$long_dens <- cbind(expand.grid(fit$xcol, fit$yrow),
+                         Density = as.vector(fit$v))
+  
+  orig_dens <- spatstat.geom::interp.im(fit,
+                                        x = data[, 1],
+                                        y = data[, 2])
+  
+  fit$original_points_dens <- cbind(data,
+                                    Density = as.vector(orig_dens))
+  
+  fit
+}
