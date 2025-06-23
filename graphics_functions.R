@@ -100,7 +100,7 @@ add_ggpoint <- function(data,ggobject=ggplot2::ggplot(),colors=c("#A2A2A2","#F1F
   if (ncol(data) < 2 || !is.numeric(data[[1]]) || !is.numeric(data[[2]])) {
     stop("Data must have at least two numeric columns for x and y coordinates.")
   }
-
+  
   for (n in 1:length(colors) ) {
     ggobject=ggobject + geom_point(data=data, aes(x=.data[[colnames(data)[1]]] , y=.data[[colnames(data)[2]]]),
                                    size=sizes[n], alpha=alphas[n], color= colors[n] )
@@ -155,12 +155,12 @@ add_ggpoint_groups <- function(data,
   if (!is.numeric(data[[1]]) || !is.numeric(data[[2]])) {
     stop("The first two columns of data must be numeric for x and y coordinates.")
   }
-
+  
   if (is.character(data[[3]])) {
     data[[3]] <- as.factor(data[[3]])
   }
   
-
+  
   if (is.null(colorscheme)) {
     colorscheme = c("#9e0142","#d53e4f","#f46d43","#fdae61","#fee08b","#e6f598","#abdda4","#66c2a5","#3288bd","#5e4fa2")
     if (is.factor(data[[3]])) {
@@ -244,37 +244,38 @@ ggscatter_colored <- function(coords,
   if (!is.numeric(coords[[1]]) || !is.numeric(coords[[2]])) {
     stop("The first two columns of coords must be numeric for x and y coordinates.")
   }
-
+  
   
   if (is.vector(values) || is.factor(values)  ) {
-   nameZ="z"
+    nameZ="z"
   } else if (is.matrix(values) || is.data.frame(values)) {
-    if (is.null(colnames(values)[3])) {
+    if (is.null(colnames(values)[1])) {
       nameZ="z"
     } else {
-      nameZ=colnames(values)[3]
+      nameZ=colnames(values)[1]
     } 
     values = values[,1] 
     
-    } else  { stop("values must be a vector, factor, matrix or data.frame") }
-    
-    
+  } else  { stop("values must be a vector, factor, matrix or data.frame") }
+  
+  
   
   ### extract colnames from coords
-  if (is.null(colnames(coords))) {
-    if (is.null(dimnamesXYZ)) {
-      dimnamesXY <- c("x", "y")
-    } 
-  } else if (is.null(dimnamesXYZ)) {
-    dimnamesXY <- colnames(coords)[1:2]
-  } 
   if (is.null(dimnamesXYZ)) {
+    if (is.null(colnames(coords))) {
+      dimnamesXY <- c("x", "y")
+    } else {
+      dimnamesXY <- colnames(coords)[1:2]
+    }
     dimnamesXYZ <- c(dimnamesXY, nameZ)
-  } else if (length(dimnamesXYZ) < 3) {
-    warning("dimnamesXYZ should have at least 3 elements, making names")
-    dimnamesXYZ <- c("x", "y", nameZ)
+  } else {
+    if (length(dimnamesXYZ) < 3) {
+      warning("dimnamesXYZ should have at least 3 elements, making names")
+      dimnamesXYZ <- c("x", "y", nameZ)
+    }
   }
- 
+
+  
   # Symmetric limits for diverging palette -----------------------------------
   lims <- NULL
   if (!is.null(symmQuant)) {
@@ -295,7 +296,7 @@ ggscatter_colored <- function(coords,
     cluster = values,
     stringsAsFactors = FALSE
   )
-  colnames(to_plot) <- dimnamesXYZ[seq_along(colnames(to_plot))]
+  colnames(to_plot) <- dimnamesXYZ
   
   # Build the plot -----------------------------------------------------------
   colorscheme <- interpolate_colors(colors, n = length(unique(to_plot[[3]])))
