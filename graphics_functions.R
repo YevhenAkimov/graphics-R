@@ -204,7 +204,7 @@ add_ggpoint_groups <- function(data,
 #' points and optional highlighting of specific rows.
 #'
 #' @param coords Matrix/data.frame with two numeric columns giving x/y positions.
-#' @param values Vector giving per-point values for colouring.
+#' @param values Vector/factor/matrix or data.frame giving per-point values for colouring. in case of multiple columns - first is used
 #' @param highlight_points Optional vector giving row names to highlight.
 #' @param ggObj Base ggplot object (created with `ggplot()`).
 #' @param size_mult Multiplier applied to all point sizes.
@@ -213,7 +213,7 @@ add_ggpoint_groups <- function(data,
 #' @param highl_shp Shape used for highlighted points.
 #' @param show_high_text Logical; add labels next to highlighted points.
 #' @param symmQuant Optional numeric (0–1) quantile defining symmetric limits
-#'   for a diverging palette when `values` is numeric.
+#'   for a diverging palette when `values` is numeric. 
 #' @param dimnamesXYZ Column names for the plot data (x, y, colour).
 #'
 #' @return A ggplot object.
