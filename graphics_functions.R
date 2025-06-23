@@ -1,23 +1,11 @@
-# gghelpers.R — utility helpers for coloured scatter plots
-# -----------------------------------------------------------------------------
-
-# File-wide package imports ----------------------------------------------------
+# package imports ----------------------------------------------------
 #' @import ggplot2
 #' @importFrom scales breaks_pretty squish hue_pal
 #' @importFrom grid unit
-#' @importFrom viridisLite viridis
+
 NULL
 
-# -----------------------------------------------------------------------------
-#' Convert factors to numeric
-#'
-#' @param x A vector of type factor, character, or numeric.
-#'
-#' @return A numeric vector where factor/character levels are coerced to their
-#'   numeric value.
-#' @examples
-#' fct2num(factor(c("1", "2", "3")))
-#' @export
+
 fct2num <- function(x) {
   if (is.factor(x)) {
     return(as.numeric(as.character(x)))
@@ -91,33 +79,35 @@ interpolate_colors <- function(original_colors, n) {
   interpolated_colors
 }
 
+add_ggpoint <- function(data,ggobject=ggplot2::ggplot(),colors=c("#A2A2A2","#F1F1F1"),sizes=c(0.7,0.5),alphas=c(0.7,0.9)) {
+  #check that data is df
+  if (!is.data.frame(data)) {
+    cat("Data must be a data frame.")
+    data=as.data.frame(data)
+  }
+  # check if data has colnames
+  if (is.null(colnames(data)) ) {
+    colnames(data) <- paste0("V", seq_len(ncol(data)))
+    warning("Data has no column names, assigning default names V1, V2, ...")
+  }
+  ## check if alphas, sizes and colors are of the same length
+  if (length(colors) != length(sizes) || length(colors) != length(alphas)) {
+    stop("Length of colors, sizes, and alphas must be the same.")
+  }
+  # check that data has at least two columns and that the first two are numeric
+  if (ncol(data) < 2 || !is.numeric(data[[1]]) || !is.numeric(data[[2]])) {
+    stop("Data must have at least two numeric columns for x and y coordinates.")
+  }
 
-add_ggpoint <- function(ggobject,
-                        data,
-                        sizes  = c(2, 1),
-                        colors = c("#252525", "#fafafa"),
-                        alphas = c(1, 1)) {
-  ggobject +
-    ggplot2::geom_point(
-      data   = data,
-      mapping = ggplot2::aes_string(x = colnames(data)[1], y = colnames(data)[2]),
-      size    = sizes[1],
-      colour  = colors[1],
-      alpha   = alphas[1],
-      stroke  = 0
-    ) +
-    ggplot2::geom_point(
-      data   = data,
-      mapping = ggplot2::aes_string(x = colnames(data)[1], y = colnames(data)[2]),
-      size    = sizes[2],
-      colour  = colors[2],
-      alpha   = alphas[2],
-      stroke  = 0
-    )
+  for (n in 1:length(colors) ) {
+    ggobject=ggobject + geom_point(data=data, aes(x=.data[[colnames(data)[1]]] , y=.data[[colnames(data)[2]]]),
+                                   size=sizes[n], alpha=alphas[n], color= colors[n] )
+  }
+  ggobject
 }
 
 # -----------------------------------------------------------------------------
-#' Add colour-coded points to an existing ggplot
+#' Add colour-coded points to an existing ggplot ( atm intended functionality not implemented . works as described below)
 #'
 #' @param data A data.frame whose first two columns give x/y coordinates and
 #'   whose third column provides either group labels (factor/character) or a
@@ -145,6 +135,24 @@ add_ggpoint_groups <- function(data,
     stop("The 'scales' package is required but not installed.")
   }
   
+  # check if data is df
+  if (!is.data.frame(data)) {
+    cat("Data must be a data frame.")
+    data <- as.data.frame(data)
+  }
+  #check if data has colnames
+  if (is.null(colnames(data))) {
+    colnames(data) <- paste0("V", seq_len(ncol(data)))
+    warning("Data has no column names, assigning default names V1, V2, ...")
+  }
+  # check that data has at least three columns
+  if (ncol(data) < 3) {
+    stop("Data must have at least three columns for x, y coordinates and group labels.")
+  }
+  # check that the first two columns are numeric
+  if (!is.numeric(data[[1]]) || !is.numeric(data[[2]])) {
+    stop("The first two columns of data must be numeric for x and y coordinates.")
+  }
 
   if (is.character(data[[3]])) {
     data[[3]] <- as.factor(data[[3]])
@@ -162,10 +170,9 @@ add_ggpoint_groups <- function(data,
   ggobject <- ggobject +
     ggplot2::geom_point(
       data   = data,
-      mapping = ggplot2::aes_string(
-        x      = colnames(data)[1],
-        y      = colnames(data)[2],
-        colour = colnames(data)[3]
+      mapping = ggplot2::aes(
+        x=.data[[colnames(data)[1]]] , y=.data[[colnames(data)[2]]],
+        colour=.data[[colnames(data)[3]]]
       ),
       alpha  = alpha,
       size   = size,
@@ -219,11 +226,53 @@ ggscatter_colored <- function(coords,
                               highl_shp        = 4,
                               show_high_text   = TRUE,
                               symmQuant        = NULL,
-                              dimnamesXYZ      = c("x", "y", "cluster")) {
+                              dimnamesXYZ      = NULL) {
   if (is.null(colors)) {
     colors = c("#9e0142","#d53e4f","#f46d43","#fdae61","#fee08b","#e6f598","#abdda4","#66c2a5","#3288bd","#5e4fa2")
   }
+  # check if coords is a matrix or data.frame
+  if (!is.matrix(coords) && !is.data.frame(coords)) {
+    stop("coords must be a matrix or data.frame with at least two columns.")
+  }
+  # check if coords has at least two columns
+  if (ncol(coords) < 2) {
+    stop("coords must have at least two columns for x and y coordinates.")
+  }
+  # check if coords has numeric columns
+  if (!is.numeric(coords[[1]]) || !is.numeric(coords[[2]])) {
+    stop("The first two columns of coords must be numeric for x and y coordinates.")
+  }
+
   
+  if (is.vector(values) || is.factor(values)  ) {
+   nameZ="z"
+  } else if (is.matrix(values) || is.data.frame(values)) {
+    if (is.null(colnames(values)[3])) {
+      nameZ="z"
+    } else {
+      nameZ=colnames(values)[3]
+    } 
+    values = values[,1] 
+    
+    } else  { stop("values must be a vector, factor, matrix or data.frame") }
+    
+    
+  
+  ### extract colnames from coords
+  if (is.null(colnames(coords))) {
+    if (is.null(dimnamesXYZ)) {
+      dimnamesXY <- c("x", "y")
+    } 
+  } else if (is.null(dimnamesXYZ)) {
+    dimnamesXY <- colnames(coords)[1:2]
+  } 
+  if (is.null(dimnamesXYZ)) {
+    dimnamesXYZ <- c(dimnamesXY, nameZ)
+  } else if (length(dimnamesXYZ) < 3) {
+    warning("dimnamesXYZ should have at least 3 elements, making names")
+    dimnamesXYZ <- c("x", "y", nameZ)
+  }
+ 
   # Symmetric limits for diverging palette -----------------------------------
   lims <- NULL
   if (!is.null(symmQuant)) {
@@ -249,8 +298,8 @@ ggscatter_colored <- function(coords,
   # Build the plot -----------------------------------------------------------
   colorscheme <- interpolate_colors(colors, n = length(unique(to_plot[[3]])))
   plot_ <- add_ggpoint(
-    ggObj,
     to_plot,
+    ggObj,
     sizes  = c(2.2, 1.9) * size_mult,
     colors = c("#252525", "#fafafa"),
     alphas = c(1, 1)
@@ -281,7 +330,7 @@ ggscatter_colored <- function(coords,
     plot_ <- plot_ +
       ggplot2::geom_point(
         data   = to_plot[rownames(to_plot) %in% highlight_points, , drop = FALSE],
-        mapping = ggplot2::aes(x = x, y = y),
+        mapping = ggplot2::aes(x = .data[[colnames(to_plot)[1] ]], y = .data[[colnames(to_plot)[2] ]] ),
         shape  = highl_shp,
         colour = col_highl,
         size   = 6 * size_mult,
@@ -294,7 +343,7 @@ ggscatter_colored <- function(coords,
       plot_ <- plot_ +
         ggplot2::geom_text(
           data   = to_pl_text,
-          mapping = ggplot2::aes(x = x, y = y, label = names(highlight_points)),
+          mapping = ggplot2::aes(x = .data[[colnames(to_plot)[1] ]], y = .data[[colnames(to_plot)[2] ]], label = names(highlight_points)),
           vjust  = 0,
           hjust  = 0,
           size   = 10 * size_mult,
@@ -302,7 +351,7 @@ ggscatter_colored <- function(coords,
         ) +
         ggplot2::geom_text(
           data   = to_pl_text,
-          mapping = ggplot2::aes(x = x, y = y, label = names(highlight_points)),
+          mapping = ggplot2::aes(x = .data[[colnames(to_plot)[1] ]], y = .data[[colnames(to_plot)[2] ]] , label = names(highlight_points)),
           vjust  = 0.04,
           hjust  = 0.04,
           size   = 10 * size_mult,
