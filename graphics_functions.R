@@ -1,5 +1,7 @@
 # functions written by humans, roxygen documentation made by chatGPT o3
-
+library(ggplot2)
+library(scales)
+library(grid)
 # package imports ----------------------------------------------------
 #' @import ggplot2
 #' @importFrom scales breaks_pretty squish hue_pal
