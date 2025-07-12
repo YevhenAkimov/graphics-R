@@ -504,7 +504,62 @@ get_density2d_spatstat <- function(data,
 }
 
 
-
+#' Scatter plot coloured by point density
+#'
+#' A thin wrapper around `ggscatter_colored()` that first estimates the
+#' two-dimensional kernel density of `coords` using
+#' `get_density2d_spatstat()` and then feeds the resulting per-point densities
+#' (`original_points_dens`) back to `ggscatter_colored()` as the colouring
+#' variable.
+#'
+#' @inheritParams ggscatter_colored
+#' @param adjust,margins,diggle,weights Passed to `get_density2d_spatstat()` to
+#'   control the kernel density estimate.
+#'
+#' @return A **ggplot2** object.
+#' @export
+ggscatter_density <- function(coords,
+                              highlight_points = NULL,
+                              ggObj            = ggplot2::ggplot(),
+                              size_mult        = 1,
+                              colors           = NULL,
+                              col_highl        = "#be2312",
+                              highl_shp        = 4,
+                              show_high_text   = TRUE,
+                              symmQuant        = NULL,
+                              dimnamesXYZ      = NULL,
+                              adjust           = 0.25,
+                              margins          = 0.1,
+                              diggle           = FALSE,
+                              weights          = NULL) {
+  
+  # --- estimate density -------------------------------------------------
+  dens_res <- get_density2d_spatstat(
+    data    = coords,
+    adjust  = adjust,
+    margins = margins,
+    diggle  = diggle,
+    weights = weights
+  )
+  
+  # --- per-point densities ----------------------------------------------
+  values <- dens_res$original_points_dens$Density
+  
+  # --- delegate to ggscatter_colored ------------------------------------
+  ggscatter_colored(
+    coords           = coords,
+    values           = values,
+    highlight_points = highlight_points,
+    ggObj            = ggObj,
+    size_mult        = size_mult,
+    colors           = colors,
+    col_highl        = col_highl,
+    highl_shp        = highl_shp,
+    show_high_text   = show_high_text,
+    symmQuant        = symmQuant,
+    dimnamesXYZ      = dimnamesXYZ
+  )
+}
 
 #' ggshape_heatmap – Circle-based Heat-map with Optional Clustering
 #'
