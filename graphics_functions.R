@@ -519,19 +519,25 @@ get_density2d_spatstat <- function(data,
 #' @return A **ggplot2** object.
 #' @export
 ggscatter_density <- function(coords,
-                              highlight_points = NULL,
-                              ggObj            = ggplot2::ggplot(),
-                              size_mult        = 1,
-                              colors           = NULL,
-                              col_highl        = "#be2312",
-                              highl_shp        = 4,
-                              show_high_text   = TRUE,
-                              symmQuant        = NULL,
-                              dimnamesXYZ      = NULL,
-                              adjust           = 0.25,
-                              margins          = 0.1,
-                              diggle           = FALSE,
-                              weights          = NULL) {
+                                    highlight_points = NULL,
+                                    ggObj            = ggplot2::ggplot(),
+                                    size_mult        = 1,
+                                    colors           = NULL,
+                                    col_highl        = "#be2312",
+                                    highl_shp        = 4,
+                                    show_high_text   = TRUE,
+                                    symmQuant        = NULL,
+                                    dimnamesXYZ      = NULL,
+                                    adjust           = 0.25,
+                                    margins          = 0.1,
+                                    diggle           = FALSE,
+                                    weights          = NULL) {
+  
+  # --- ensure every coordinate column is numeric ------------------------
+  coords <- dplyr::mutate(
+    coords,
+    dplyr::across(dplyr::everything(), as.numeric)
+  )%>% as.data.frame()
   
   # --- estimate density -------------------------------------------------
   dens_res <- get_density2d_spatstat(
