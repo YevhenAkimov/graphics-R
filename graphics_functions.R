@@ -7,10 +7,10 @@ library(grid)
 #' @importFrom scales breaks_pretty squish hue_pal
 #' @importFrom grid unit
 
-NULL
 
 
-remotes::source_url("https://raw.githubusercontent.com/YevhenAkimov/general_purpose_R/main/general_helpers.R")
+
+source("https://raw.githubusercontent.com/YevhenAkimov/general_purpose_R/main/general_helpers.R")
 
 
 fct2num <- function(x) {
