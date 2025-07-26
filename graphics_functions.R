@@ -503,6 +503,191 @@ get_density2d_spatstat <- function(data,
   fit
 }
 
+ plot2DPhenotypeContours <- function(coords,
+                                            weights        = NULL,
+                                            scale          = "none",   # "none", "sd", "log", or TRUE/FALSE
+                                            center         = FALSE,
+                                            ggObj          = ggplot2::ggplot(),
+                                            colors         = c("#5F4690",
+                                                               "#1D6996",
+                                                               "#EDAD08",
+                                                               "#CC503E",
+                                                               "#94346E",
+                                                               "#0F8554"),
+                                            show_points    = TRUE,
+                                            point_size     = 0.2,
+                                            point_color    = "#a1a1a1",
+                                            adjust         = 0.1,
+                                            countour_color = "#ffffff",
+                                            alpha_line          = 0.5,
+                                            alpha_range = c(0.1, 0.35),
+                                            size           = 0.5,
+                                            gg_theme       = ggplot2::theme_light,
+                                            contour_breaks = seq(0.25, 1, length.out = 5),
+                                            ...) {
+          
+          ## ------------------------------------------------------------------ ##
+          ## 0. Normalise the `scale` flag ------------------------------------ ##
+          ## ------------------------------------------------------------------ ##
+          if (is.logical(scale))
+            scale <- if (scale) "sd" else "none"
+          scale <- match.arg(tolower(scale), c("none", "sd", "log"))
+          
+          if (scale == "log" && center) {
+            warning("`center` is ignored when `scale = \"log\"`.")
+            center <- FALSE
+          }
+          
+          ## ------------------------------------------------------------------ ##
+          ## 1. Basic coordinate checks --------------------------------------- ##
+          ## ------------------------------------------------------------------ ##
+          if (!is.data.frame(coords) && !is.matrix(coords))
+            stop("`coords` must be a data frame or matrix.")
+          coords <- as.data.frame(coords)
+          
+          if (ncol(coords) < 2L || !is.numeric(coords[[1]]) || !is.numeric(coords[[2]]))
+            stop("First two columns of `coords` must be numeric x/y coordinates.")
+          
+          x_lab <- colnames(coords)[1]
+          y_lab <- colnames(coords)[2]
+          names(coords)[1:2] <- c("x", "y")      # standard names
+          
+          ## ------------------------------------------------------------------ ##
+          ## 1a. Transform coordinates for KDE (single μ, axis-specific σ) ----- ##
+          ## ------------------------------------------------------------------ ##
+          x  <- coords$x
+          y  <- coords$y
+          
+          mu     <- 0        # shared mean
+          sd_x   <- 1
+          sd_y   <- 1
+          
+          if (center) {
+            mu <- mean(c(x, y))
+            x  <- x - mu
+            y  <- y - mu
+          }
+          
+          if (scale == "sd") {
+            sd_x <- stats::sd(x)
+            sd_y <- stats::sd(y)
+            if (sd_x == 0 || sd_y == 0)
+              stop("Cannot scale by SD: zero variance detected.")
+            x <- x / sd_x
+            y <- y / sd_y
+          } else if (scale == "log") {
+            if (any(x < 0) || any(y < 0))
+              stop("Negative coordinates cannot be log-transformed; use scale = \"sd\" or \"none\".")
+            x <- log1p(x)
+            y <- log1p(y)
+          }
+          
+          coords_kde <- data.frame(x = x, y = y)
+          
+          ## ------------------------------------------------------------------ ##
+          ## 2. Prepare weights ----------------------------------------------- ##
+          ## ------------------------------------------------------------------ ##
+          if (is.null(weights)) {
+            weights <- data.frame(uniform = rep(1, nrow(coords)), check.names = FALSE)
+          } else if (is.vector(weights)) {
+            weights <- data.frame(phenotype = weights, check.names = FALSE)
+          } else {
+            weights <- as.data.frame(weights)
+          }
+          
+          if (!all(vapply(weights, is.numeric, logical(1))))
+            stop("All `weights` columns must be numeric.")
+          if (nrow(weights) != nrow(coords))
+            stop("`weights` must have the same number of rows as `coords`.")
+          
+          n_pheno <- ncol(weights)
+          message("Number of phenotypes: ", n_pheno)
+          message("Number of colors: ", length(colors))
+          if (length(colors) < n_pheno)
+            colors <- rep_len(colors, n_pheno)
+          
+          ## ------------------------------------------------------------------ ##
+          ## 3. KDE + inverse transform of grid --------------------------------##
+          ## ------------------------------------------------------------------ ##
+          dens_list <- lapply(seq_len(n_pheno), function(i) {
+            
+            ## ---- 3a. Exclude zero-weighted points for this phenotype -------- ##
+            w_i <- weights[[i]]
+            idx <- w_i > 0 & !is.na(w_i)
+            if (!any(idx))
+              stop("All weights are 0 (or NA) for phenotype ", colnames(weights)[i], ".")
+            
+            coords_sub   <- coords_kde[idx, , drop = FALSE]
+            weights_sub  <- w_i[idx]
+            
+            dens <- get_density2d_spatstat(coords_sub,
+                                           weights = weights_sub,
+                                           adjust  = adjust,
+                                           ...)
+            dens$v[dens$v < 0] <- 0
+            df <- reshape2::melt(dens$v)
+            
+            ## ---- 3b. Map grid back to original coordinate space ------------- ##
+            if (scale == "sd") {
+              df$x <- dens$xcol[df$Var2] * sd_x + mu
+              df$y <- dens$yrow[df$Var1] * sd_y + mu
+            } else if (scale == "log") {
+              df$x <- exp(dens$xcol[df$Var2]) - 1
+              df$y <- exp(dens$yrow[df$Var1]) - 1
+            } else {                     # "none"
+              df$x <- dens$xcol[df$Var2] + mu   # mu is 0 unless centre-only
+              df$y <- dens$yrow[df$Var1] + mu
+            }
+            
+            df$value <- min_max_normalization(df$value, 0, 1)
+            df
+          })
+          
+          ## ------------------------------------------------------------------ ##
+         
+          p_base <- ggObj
+          if (show_points) {
+            p_base <- p_base +
+              ggplot2::geom_point(data = coords,
+                                  ggplot2::aes(x = x, y = y),
+                                  size = point_size,
+                                  color = point_color)
+          }
+          
+          p_base <- p_base +
+            ggplot2::labs(x = x_lab, y = y_lab) +
+            gg_theme()
+          
+          ## ------------------------------------------------------------------ ##
+          ## 5. Overlay phenotype contours ------------------------------------ ##
+          ## ------------------------------------------------------------------ ##
+          p_final <- Reduce(function(p, idx) {
+            df_i   <- dens_list[[idx]]
+            base_c <- colorspace::darken(colors[idx], 0.2,
+                                         space = "combined",
+                                         method = "relative")
+            p +
+              ggplot2::geom_contour_filled(
+                data   = df_i,
+                ggplot2::aes(x = x, y = y, z = value, alpha = ..level..),
+                fill   = base_c,
+                breaks = contour_breaks
+              ) +
+              ggplot2::geom_contour(
+                data   = df_i,
+                ggplot2::aes(x = x, y = y, z = value),
+                color  = countour_color,# "white",
+                alpha  = alpha_line,
+                size   = size,
+                breaks = contour_breaks
+              ) +
+              ggplot2::scale_alpha_discrete(range = alpha_range)
+          },
+          x    = seq_len(n_pheno),
+          init = p_base)
+          
+          p_final
+        }
 
 #' Scatter plot coloured by point density
 #'
