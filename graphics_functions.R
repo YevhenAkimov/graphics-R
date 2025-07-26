@@ -8,7 +8,7 @@ library(grid)
 #' @importFrom grid unit
 
 NULL
-
+source("https://raw.githubusercontent.com/YevhenAkimov/general_purpose_R/main/general_helpers.R")
 
 fct2num <- function(x) {
   if (is.factor(x)) {
