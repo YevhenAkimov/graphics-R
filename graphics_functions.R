@@ -852,8 +852,7 @@ ggscatter_density <- function(coords,
 #' @export
 #' @import ggplot2
 #' @importFrom colorspace darken lighten
-
-ggshape_heatmap <- function(
+ggshape_heatmap=function(
     data,
     data_sizes  = NULL,
     shape_values = 22,
@@ -874,10 +873,24 @@ ggshape_heatmap <- function(
     text.angle.x = 0,
     text.angle.y = 0,
     darken_outline_color_coeff = -1,
+    symmQuant=NULL,
     grid.pars = list(grid.size = 0.15,
                      grid.color = "#dddddd",
                      grid.linetype = "solid")
 ) {
+  
+  if (!is.null(symmQuant)) {
+    if (!is.numeric(symmQuant) || symmQuant < 0 || symmQuant > 1) {
+      stop("symmQuant must be numeric in [0, 1]")
+    }
+    
+    qnts1 <- abs(stats::quantile(data, symmQuant, na.rm = TRUE))
+    qnts2 <- abs(stats::quantile(data, 1 - symmQuant, na.rm = TRUE))
+    maxQ  <- max(qnts1, qnts2)
+    data  <- MinMax(data, min = -maxQ, max = maxQ)
+  }
+  
+  
   `%||%` <- function(a, b) if (!is.null(a)) a else b
   
   if (is.null(data_sizes)) data_sizes <- data
@@ -973,3 +986,4 @@ ggshape_heatmap <- function(
     legend.title     = ggplot2::element_text(size = legend.text.size)
   )
 }
+
