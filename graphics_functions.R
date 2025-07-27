@@ -569,6 +569,106 @@ ggscatter_density <- function(coords,
     dimnamesXYZ      = dimnamesXYZ
   )
 }
+#' Weighted 2D density contours over scatter coordinates
+#'
+#' Draws filled and line **kernel density estimate** (KDE) contours for one or
+#' more phenotypes (weight columns) on top of optional points. Supports optional
+#' centering and per-axis standard-deviation scaling, or log scaling, before KDE
+#' estimation; the grid is then mapped back to the original coordinate space for
+#' plotting. A legend is shown only when `weights` is supplied by the user.
+#'
+#' @param coords A data frame or matrix whose first two columns are numeric
+#'   coordinates. The first two columns are used as `x`/`y` (and are internally
+#'   renamed to `x`/`y`), while axis labels keep the original column names.
+#' @param weights `NULL`, a numeric vector of length `nrow(coords)`, or a
+#'   numeric data frame/matrix with `nrow(coords)` rows. If `NULL`, a single
+#'   uniform phenotype is assumed and no legend is drawn. If a vector, it is
+#'   treated as one phenotype; if a data frame/matrix, each column is a
+#'   phenotype (weight) to contour.
+#' @param scale Character or logical; one of `"none"`, `"sd"`, or `"log"`.
+#'   Logical values are coerced to `"sd"` (for `TRUE`) or `"none"` (for `FALSE`).
+#'   * `"sd"` scales `x` and `y` by their sample SDs (after optional centering)
+#'   before KDE; the contour grid is inverse-transformed for plotting.  
+#'   * `"log"` applies `log1p()` to `x`/`y` before KDE and inverse-transforms
+#'   with `exp() - 1` for plotting (requires non-negative coordinates; see
+#'   **Notes**).  
+#'   * `"none"` uses raw coordinates (possibly after centering).
+#' @param center Logical. If `TRUE`, subtracts the common mean of the pooled
+#'   `c(x, y)` from both axes prior to any scaling. Ignored when `scale = "log"`.
+#' @param ggObj A `ggplot2::ggplot()` object to add layers to. Defaults to an
+#'   empty plot.
+#' @param colors Character vector of base fill colors (one per phenotype). If
+#'   fewer colors than phenotypes are provided, the palette is extended with
+#'   `interpolate_colors()`; excess colors are truncated.
+#' @param show_points Logical; add the raw points beneath the contours.
+#' @param point_size Numeric point size for the scatter layer.
+#' @param point_color Color for the scatter layer points.
+#' @param adjust Numeric bandwidth adjustment passed to the KDE helper
+#'   `get_density2d_spatstat()` (larger values produce smoother contours).
+#' @param countour_color Color for the contour *lines* (note the parameter
+#'   name spelling).
+#' @param alpha_line Numeric alpha for the contour lines.
+#' @param alpha_range Numeric length-2 vector giving the range used by
+#'   `ggplot2::scale_alpha_discrete()` for the filled contour levels.
+#' @param size Numeric line width for the contour lines.
+#' @param gg_theme A theming function (e.g., `ggplot2::theme_light`) applied to
+#'   the plot.
+#' @param darken_value Numeric passed to `colorspace::darken()` to derive the
+#'   filled contour color from `colors` for each phenotype.
+#' @param contour_breaks Numeric vector of contour break values (on the
+#'   min–max normalized density scale in `[0, 1]`) used for both filled and
+#'   line contours.
+#' @param ... Additional arguments forwarded to `get_density2d_spatstat()`.
+#'
+#' @details
+#' - **Input checks:** `coords` must have at least two numeric columns. All
+#'   columns of `weights` (if provided) must be numeric and have the same number
+#'   of rows as `coords`.  
+#' - **Transform → KDE → inverse transform:** The function optionally centers
+#'   and/or scales/log-transforms coordinates **before** KDE; after estimating
+#'   densities on a grid, grid coordinates are inverse-transformed back to the
+#'   original scale so axes remain interpretable.  
+#' - **Per-phenotype normalization:** For each phenotype, density values are
+#'   min–max normalized to `[0, 1]` via `min_max_normalization()` so that
+#'   `contour_breaks` and alpha mapping are comparable across phenotypes.  
+#' - **Legend behavior:** A discrete "Phenotype" legend is drawn only when
+#'   `weights` is user-supplied (vector or multi-column). With `weights = NULL`
+#'   (uniform), the legend is suppressed.  
+#' - **Color handling:** If `length(colors) < n_pheno`, the palette is extended
+#'   using `interpolate_colors()`. Each phenotype’s filled contours use a
+#'   darkened version of the corresponding color via `colorspace::darken()`.
+#'
+#' @note
+#' - When `scale = "log"`, negative coordinates are not allowed and `center` is
+#'   ignored (a warning is emitted).  
+#' - When `scale = "sd"`, zero variance on any axis results in an error.  
+#' - This function relies on helper utilities `get_density2d_spatstat()`,
+#'   `interpolate_colors()`, and `min_max_normalization()` being available in
+#'   your package namespace.
+#'
+#' @return A `ggplot` object with optional points and per-phenotype filled and
+#'   line density contours.
+#'
+#' @examples
+#' set.seed(1)
+#' n <- 500
+#' coords <- data.frame(X = rnorm(n, 0, 1), Y = rnorm(n, 0, 1))
+#'
+#' # Two phenotypes (weights as columns) with SD scaling and centering
+#' w <- data.frame(A = runif(n), B = runif(n))
+#' p <- ggdensity_contours(coords, weights = w, scale = "sd", center = TRUE,
+#'                         contour_breaks = seq(0.2, 1, length.out = 6))
+#' print(p)
+#'
+#' # Single (uniform) phenotype, no points, custom theme
+#' ggdensity_contours(coords, show_points = FALSE, gg_theme = ggplot2::theme_minimal)
+#'
+#' @seealso ggplot2::geom_contour_filled, ggplot2::geom_contour,
+#'   colorspace::darken, reshape2::melt
+#' @importFrom stats sd setNames
+#' @importFrom reshape2 melt
+#' @importFrom colorspace darken
+#' @export
 ggdensity_contours <- function(coords,
                                     weights        = NULL,
                                     scale          = "none",   # "none", "sd", "log", or TRUE/FALSE
@@ -800,6 +900,121 @@ ggdensity_contours <- function(coords,
   
   p_final
 }
+
+
+
+#' Plot multiple density contour panels (one per weight column)
+#'
+#' @description
+#' Wrapper around `ggdensity_contours()` that creates a separate plot for each
+#' column in `weights` and arranges them in a grid.
+#'
+#' @param coords A data frame or matrix with at least two numeric columns (x/y).
+#' @param weights A data frame/matrix (or vector) of weights; each column is
+#'   treated as a separate phenotype to plot in its own panel.
+#' @param ggObj A base `ggplot2::ggplot()` object to build on.
+#' @param titles Optional character vector for panel titles; defaults to
+#'   `colnames(weights)`. Recycled if necessary.
+#' @param plots_per_row Integer; number of panels per row. Defaults to
+#'   `ceiling(sqrt(ncol(weights)))`.
+#' @param colors Character vector of base colors for panels. If fewer than the
+#'   number of panels, it is extended with `interpolate_colors(colors, n)`.
+#'   Each panel gets its own single color from this vector.
+#' @param legend.position Legend position for each panel (passed via theme).
+#' @param legend.key.size Legend key size (cm).
+#' @param legend.text.size Legend text size.
+#' @param legend.text.angle Legend text angle.
+#' @param ... Additional arguments passed to `ggdensity_contours()`
+#'   (e.g., `scale`, `center`, `show_points`, `adjust`, `contour_breaks`, etc.).
+#'
+#' @return A grob returned by `gridExtra::grid.arrange` containing all panels.
+#'
+#' @examples
+#' \dontrun{
+#' set.seed(1)
+#' n <- 400
+#' coords <- data.frame(PC1 = rnorm(n), PC2 = rnorm(n))
+#' weights <- data.frame(A = runif(n), B = runif(n), C = rexp(n))
+#' ggdensity_contours_multi(coords, weights, plots_per_row = 2)
+#' }
+ggdensity_contours_multi <- function(coords,
+                                     weights,
+                                     ggObj = ggplot2::ggplot(),
+                                     titles = NULL,
+                                     plots_per_row = NULL,
+                                     colors         =  c('#5F4690','#1D6996','#0F8554','#EDAD08','#CC503E','#94346E','#1C1F33','#93A8AC','#A16928','#065256'),
+                                     legend.position = "bottom",
+                                     legend.key.size = 0.4,
+                                     legend.text.size = 7,
+                                     legend.text.angle = 0,
+                                     ...) {
+  
+  # Coerce weights to data.frame with columns
+  if (!is.data.frame(weights)) {
+    if (is.matrix(weights)) {
+      weights <- as.data.frame(weights)
+    } else {
+      weights <- cbind.data.frame(values = weights)
+    }
+  }
+  n <- ncol(weights)
+  
+  # Layout
+  if (is.null(plots_per_row)) {
+    plots_per_row <- ceiling(sqrt(n))
+  }
+  
+  # Panel titles
+  if (is.null(titles)) {
+    titles <- colnames(weights)
+    if (is.null(titles)) titles <- paste0("phenotype_", seq_len(n))
+  }
+  if (length(titles) != n) {
+    warning("Length of `titles` (", length(titles),
+            ") does not match number of columns in `weights` (", n, "). Titles will be recycled.")
+    titles <- rep_len(titles, n)
+  }
+  
+  # Ensure enough panel colors: extend using interpolate_colors() if needed
+  if (length(colors) < n) {
+    warning("`colors` length (", length(colors),
+            ") is less than number of panels (", n, "); extending with interpolate_colors().")
+    colors <- interpolate_colors(colors, n)
+  } else if (length(colors) > n) {
+    colors <- colors[seq_len(n)]
+  }
+  
+  plot_list <- vector("list", length = n)
+  
+  # Build each panel by calling ggdensity_contours() with a single-column weight
+  for (i in seq_len(n)) {
+    w_i <- weights[, i, drop = FALSE]  # keep column name
+    col_i <- colors[i]
+    
+    p_i <- ggdensity_contours(
+      coords = coords,
+      weights = w_i,
+      ggObj = ggObj,
+      colors = col_i,      # single color for this panel
+      ...
+    ) +
+      ggplot2::ggtitle(titles[i]) +
+      ggplot2::theme(
+        legend.position = legend.position,
+        legend.title = ggplot2::element_text(size = legend.text.size),
+        legend.text  = ggplot2::element_text(size = legend.text.size,
+                                             angle = legend.text.angle),
+        legend.key.size = grid::unit(legend.key.size, "cm")
+      )
+    
+    plot_list[[i]] <- p_i +coord_fixed()
+  }
+  
+  arranged_plots <- do.call(gridExtra::grid.arrange, c(plot_list, ncol = plots_per_row))
+  return(arranged_plots)
+}
+
+
 
 
 
