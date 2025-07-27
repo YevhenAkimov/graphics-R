@@ -374,7 +374,61 @@ ggscatter_colored <- function(coords,
 }
 
 
-
+ggscatter_color_multi=function( coords, values, highlight_points=NULL, ggObj=ggplot(), 
+                               titles=NULL,
+                               size_mult=1,colors= c("#9e0142","#d53e4f","#f46d43","#fdae61","#fee08b","#e6f598","#abdda4","#66c2a5","#3288bd","#5e4fa2"),col_highl="#be2312",
+                               highl_shp=4, show_high_text=T, plots_per_row = NULL,
+                               symmQuant=NULL, color_text="value", legend.text.angle=90,
+                               legend.key.size=0.4, legend.text.size=7,legend.position="bottom" ){
+  
+  library(gridExtra)
+  library(grid)
+  
+  if (!is.data.frame(values)) {
+    if (is.matrix(values)) {
+      values <- as.data.frame(values)
+    } else {
+      values <- cbind.data.frame(values = values)
+    }
+  }
+  
+  n = ncol(values)
+  
+  # Determine grid layout
+  if (is.null(plots_per_row)) {
+    plots_per_row = ceiling(sqrt(n))
+  }
+  
+  plot_list = vector("list", length = n)
+  
+  if (is.null(titles)) {
+    titles = colnames(values)
+  }
+  for (i in 1:n) {
+    plot_list[[i]] = ggscatter_colored(coords=coords,
+                                    values=values[,i],
+                                    highlight_points=highlight_points,
+                                    ggObj=ggObj,
+                                    size_mult=size_mult,
+                                    colors=colors,
+                                    col_highl=col_highl,
+                                    highl_shp=highl_shp,
+                                    show_high_text=show_high_text,
+                                    symmQuant=symmQuant)+
+      
+      ggtitle(titles[i]) +labs(color =color_text)+
+      theme( legend.position = legend.position, 
+             legend.title = element_text(size = legend.text.size), 
+             legend.text = element_text(size = legend.text.size,
+                                        angle = legend.text.angle),   
+             legend.key.size = unit(legend.key.size, "cm"))
+  }
+  
+  arranged_plots <- do.call(gridExtra::grid.arrange, c(plot_list, ncol = plots_per_row))
+  
+  return(arranged_plots)
+  
+}
 
 #' Density estimation helpers using spatstat
 #'
