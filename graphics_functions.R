@@ -1310,3 +1310,22 @@ ggshape_heatmap=function(
   )
 }
 
+
+theme_umap=function() {
+  theme_light() %+replace% 
+    theme( panel.grid.major = element_blank(),
+           plot.title = element_text(size = 16, hjust = 0, 
+                                     vjust = 1 ),
+           axis.ticks = element_blank(),
+           legend.position = "none",
+           panel.grid.minor = element_blank(),
+           axis.text = element_blank(),
+           axis.title.x = element_blank(),
+           axis.title.y = element_blank())
+} 
+theme_umap_legend=function() {
+  theme_umap() %+replace% 
+    theme( 
+           legend.position = "right")
+          
+} 
