@@ -1303,9 +1303,29 @@ ggshape_heatmap=function(
                             linetype = grid_linetype)
     else ggplot2::element_blank(),
     panel.grid.minor = ggplot2::element_blank(),
-    axis.text.x      = ggplot2::element_text(angle = text.angle.x, hjust = 0),
-    axis.text.y      = ggplot2::element_text(angle = text.angle.y, hjust = 0),
+    axis.text.x      = ggplot2::element_text(angle = text.angle.x, hjust = 1,vjust=0),
+    axis.text.y      = ggplot2::element_text(angle = text.angle.y, hjust = 1),
     legend.key.size  = grid::unit(legend.key.size, "cm"),
     legend.title     = ggplot2::element_text(size = legend.text.size)
   )
 }
+
+
+theme_umap=function() {
+  theme_light() %+replace% 
+    theme( panel.grid.major = element_blank(),
+           plot.title = element_text(size = 16, hjust = 0, 
+                                     vjust = 1 ),
+           axis.ticks = element_blank(),
+           legend.position = "none",
+           panel.grid.minor = element_blank(),
+           axis.text = element_blank(),
+           axis.title.x = element_blank(),
+           axis.title.y = element_blank())
+} 
+theme_umap_legend=function() {
+  theme_umap() %+replace% 
+    theme( 
+      legend.position = "right")
+  
+} 
