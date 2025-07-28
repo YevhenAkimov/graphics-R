@@ -385,7 +385,7 @@ ggscatter_color_multi=function( coords, values, highlight_points=NULL, ggObj=ggp
                                size_mult=1,colors= c("#9e0142","#d53e4f","#f46d43","#fdae61","#fee08b","#e6f598","#abdda4","#66c2a5","#3288bd","#5e4fa2"),col_highl="#be2312",
                                highl_shp=4, show_high_text=T, plots_per_row = NULL,
                                symmQuant=NULL, color_text="value", legend.text.angle=90,
-                               legend.key.size=0.4, legend.text.size=7,legend.position="bottom" ){
+                               legend.key.size=0.4, legend.text.size=7,legend.position="bottom",  gg_theme = NULL ){
   
   library(gridExtra)
   library(grid)
@@ -420,7 +420,7 @@ ggscatter_color_multi=function( coords, values, highlight_points=NULL, ggObj=ggp
                                     col_highl=col_highl,
                                     highl_shp=highl_shp,
                                     show_high_text=show_high_text,
-                                    symmQuant=symmQuant)+
+                                    symmQuant=symmQuant,gg_theme=gg_theme)+
       
       ggtitle(titles[i]) +labs(color =color_text)+
       theme( legend.position = legend.position, 
