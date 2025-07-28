@@ -1303,8 +1303,8 @@ ggshape_heatmap=function(
                             linetype = grid_linetype)
     else ggplot2::element_blank(),
     panel.grid.minor = ggplot2::element_blank(),
-    axis.text.x      = ggplot2::element_text(angle = text.angle.x, vjust = 1),
-    axis.text.y      = ggplot2::element_text(angle = text.angle.y, hjust = 1),
+    axis.text.x      = ggplot2::element_text(angle = text.angle.x, hjust = 0),
+    axis.text.y      = ggplot2::element_text(angle = text.angle.y, hjust = 0),
     legend.key.size  = grid::unit(legend.key.size, "cm"),
     legend.title     = ggplot2::element_text(size = legend.text.size)
   )
