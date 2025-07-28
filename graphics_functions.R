@@ -371,7 +371,7 @@ ggscatter_colored <- function(coords,
     
     plot_ <- plot_ 
   }
-  if (is.null(gg_theme) {
+  if (is.null(gg_theme)) {
     return(plot_)
   } else {
     return(plot_+gg_theme())
