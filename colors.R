@@ -1,5 +1,5 @@
-requie(paletteer)
-requie(ggthemes)
+require(paletteer)
+require(ggthemes)
 colorscheme_prism   = c('#5F4690','#1D6996','#38A6A5','#0F8554','#73AF48','#EDAD08','#E17C05','#CC503E','#94346E','#6F4070','#994E95','#666666')
 colorscheme_ant     = c('#855C75','#D9AF6B','#AF6458','#736F4C','#526A83','#625377','#68855C','#9C9C5E','#A06177','#8C785D','#467378','#7C7C7C')
 colorscheme_ant_mod = c('#D9AF6B','#736F4C','#526A83','#625377','#68855C','#9C9C5E','#A06177','#8C785D','#467378','#7C7C7C')
