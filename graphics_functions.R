@@ -1329,3 +1329,86 @@ theme_umap_legend=function() {
       legend.position = "right")
   
 } 
+
+                
+ggdensity_contours_diverge = function(coords,
+                                      weights,
+                                      ggObj = ggplot2::ggplot(),
+                                      titles = NULL,
+                                      plots_per_row = NULL,
+                                      colors = c("#1f77b4", "#d62728"),  
+                                      legend.labels = c("Positive", "Negative"),
+                                      legend.position = "bottom",
+                                      legend.key.size = 0.4,
+                                      legend.text.size = 7,
+                                      legend.text.angle = 0,
+                                      ...) {
+  
+  # ---- Coerce weights to data.frame with columns (mirror ggdensity_contours_multi) ----
+  if (!is.data.frame(weights)) {
+    if (is.matrix(weights)) {
+      weights <- as.data.frame(weights)
+    } else {
+      weights <- cbind.data.frame(values = weights)
+    }
+  }
+  n <- ncol(weights)
+  
+  # ---- Layout ----
+  if (is.null(plots_per_row)) {
+    plots_per_row <- ceiling(sqrt(n))
+  }
+  
+  # ---- Panel titles ----
+  if (is.null(titles)) {
+    titles <- colnames(weights)
+    if (is.null(titles)) titles <- paste0("phenotype_", seq_len(n))
+  }
+  if (length(titles) != n) {
+    warning("Length of `titles` (", length(titles),
+            ") does not match number of columns in `weights` (", n, "). Titles will be recycled.")
+    titles <- rep_len(titles, n)
+  }
+  
+  # ---- Validate colors and labels ----
+  if (length(colors) != 2L) {
+    stop("`colors` must be length 2: first for +w_i, second for -w_i.")
+  }
+  if (length(legend.labels) != 2L) {
+    stop("`legend.labels` must be length 2, e.g., c('Positive','Negative').")
+  }
+  
+  plot_list <- vector("list", length = n)
+  
+  # ---- Build each panel by calling ggdensity_contours() with two densities: +w_i and -w_i ----
+  for (i in seq_len(n)) {
+    w_i <- weights[, i, drop = FALSE]  # keep as one-column data.frame
+    
+    # Two-column weights with consistent, customizable legend labels across panels
+    w_div <- cbind.data.frame(
+      setNames(w_i, legend.labels[1]),   # +w_i
+      setNames(-w_i, legend.labels[2])   # -w_i
+    )
+    
+    p_i <- ggdensity_contours(
+      coords  = coords,
+      weights = w_div,        # pass both +w_i and -w_i
+      ggObj   = ggObj,
+      colors  = colors,       # exactly two colors reused for every panel
+      ...
+    ) +
+      ggplot2::ggtitle(titles[i]) +
+      ggplot2::theme(
+        legend.position = legend.position,
+        legend.title    = ggplot2::element_text(size = legend.text.size),
+        legend.text     = ggplot2::element_text(size = legend.text.size,
+                                                angle = legend.text.angle),
+        legend.key.size = grid::unit(legend.key.size, "cm")
+      )
+    
+    plot_list[[i]] <- p_i + ggplot2::coord_fixed()
+  }
+  
+  arranged_plots <- do.call(gridExtra::grid.arrange, c(plot_list, ncol = plots_per_row))
+  return(arranged_plots)
+}
