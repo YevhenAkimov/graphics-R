@@ -234,7 +234,8 @@ ggscatter_colored <- function(coords,
                               show_high_text   = TRUE,
                               symmQuant        = NULL,
                               dimnamesXYZ      = NULL,
-                              gg_theme = NULL
+                              gg_theme = NULL,
+                              brks=5
                              ) {
   if (is.null(colors)) {
     colors = c("#9e0142","#d53e4f","#f46d43","#fdae61","#fee08b","#e6f598","#abdda4","#66c2a5","#3288bd","#5e4fa2")
@@ -320,7 +321,8 @@ ggscatter_colored <- function(coords,
     plot_,
     colorscheme = colorscheme,
     size         = 2 * size_mult,
-    color_limits = lims
+    color_limits = lims,
+    brks=brks
   ) +
     ggplot2::theme_light() +
     ggplot2::theme(
