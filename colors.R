@@ -87,7 +87,7 @@ x1=c(rev(x),c("#fdae61","#fee08b","#e6f598","#abdda4","#66c2a5","#3288bd","#5e4f
 google=c("#E22B29", "#F7B00C", "#2D9C41", "#346EF2", "#AAAAAA")
 
 RdBlck=paletteer::paletteer_c("ggthemes::Classic Red-Black", 200)
-
+BlRdDark2= c('#9C0824','#BF1316','#D42922','#E96251','#EBA49A','#B0B0B0','#838383','#5D5D5D', '#3B3B3B' ,'#1E1E1E')
 Blues2=c("#FCFCFC", "#DCE3F1", "#BDCAE6" ,"#9CB2DA" ,"#7A9BCF" ,"#5484C5" ,"#366EAE" ,"#2A588D" ,"#1F436C" ,"#152F4D" ,"#0C1C30", "#040404")
 Rd=       c('#67001f','#b2182b','#d6604d','#f4a582')
 BlRdDark=c("#332874", "#6B579B" , "#B2A7D2" ,"#ffffff", "#CBAEA8" , "#955D56" ,"#621E1E")
