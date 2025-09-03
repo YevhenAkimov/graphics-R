@@ -1182,6 +1182,7 @@ ggshape_heatmap=function(
     data_sizes  = NULL,
     shape_values = 22,
     size_range   = c(2, 8),
+    stroke=0.2,
     colorscheme = rev(c('#9C0824','#BF1316','#D42922','#E96251','#EBA49A','#f0f0f0','#B0B0B0','#838383','#5D5D5D', '#3B3B3B' ,'#1E1E1E')), 
     value_label  = "Value",
     size_label   = "Size",
@@ -1288,7 +1289,7 @@ ggshape_heatmap=function(
   # --- plot ---------------------------------------------------------------
   p <- ggplot2::ggplot(df, aes(x = Column, y = Row)) +
     ggplot2::geom_point(aes(fill = Value, size = Size, colour = Value),
-                        shape = shape_values) +
+                        shape = shape_values,stroke=stroke) +
     ggplot2::scale_size(range = size_range, name = size_label) +
     ggplot2::scale_fill_gradientn(colours = colorscheme, name = value_label) +
     ggplot2::scale_colour_gradientn(colours = outline_colors, guide = "none") +
@@ -1311,7 +1312,6 @@ ggshape_heatmap=function(
     legend.title     = ggplot2::element_text(size = legend.text.size)
   )
 }
-
 
 theme_umap=function() {
   theme_light() %+replace% 
