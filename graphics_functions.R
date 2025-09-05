@@ -461,13 +461,20 @@ require(spatstat)
 #'
 #' @examples
 #' get_plot_margins(1:10, mult = 0.2)
+#get_plot_margins <- function(x, mult = 0.1) {
+#  rng <- range(x)
+#  d   <- diff(rng)
+#  margin <- c(-d, d) * mult
+#  rng + margin
+#}
 get_plot_margins <- function(x, mult = 0.1) {
-  rng <- range(x)
-  d   <- diff(rng)
-  margin <- c(-d, d) * mult
-  rng + margin
+  x <- as.numeric(x)                  # force an atomic numeric vector
+  x <- x[is.finite(x)]                # drop NA/Inf that can upset range()
+  if (!length(x)) return(c(0, 1))     # fallback if column is empty after filtering
+  rng <- range(x)                     # base::range
+  d   <- diff(rng)                    # base::diff expects numeric
+  rng + c(-d, d) * mult
 }
-
 #' Fast kernel density estimate for a point pattern
 #'
 #' Thin wrapper around [spatstat.explore::density.ppp()] that accepts raw x/y
