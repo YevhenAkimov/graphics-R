@@ -598,7 +598,8 @@ ggscatter_density <- function(coords,
                                     adjust           = 0.25,
                                     margins          = 0.1,
                                     diggle           = FALSE,
-                                    weights          = NULL) {
+                                    weights          = NULL,
+                                    log_transform_for_density=FALSE) {
   
   # --- ensure every coordinate column is numeric ------------------------
   coords <- dplyr::mutate(
@@ -608,7 +609,7 @@ ggscatter_density <- function(coords,
   
   # --- estimate density -------------------------------------------------
   dens_res <- get_density2d_spatstat(
-    data    = coords,
+    data    = if (log_transform_for_density) log10(coords) else coords,
     adjust  = adjust,
     margins = margins,
     diggle  = diggle,
