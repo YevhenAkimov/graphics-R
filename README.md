@@ -1,4 +1,4 @@
-functions written by humans, roxygen documentation made by chatGPT o3
+functions written by humans, roxygen documentation made by chatGPT
 
 to load into your R env
 
