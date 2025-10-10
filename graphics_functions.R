@@ -1417,3 +1417,102 @@ ggdensity_contours_diverge = function(coords,
   arranged_plots <- do.call(gridExtra::grid.arrange, c(plot_list, ncol = plots_per_row))
   return(arranged_plots)
 }
+
+
+
+
+
+plot_lineage_graph <- function(
+    conn_strength_clean,
+    cluster_members     = NULL,          
+    output_path         = NULL,          
+    filename_prefix     = "qgraph",
+    colorscheme=c("#181831","#273068","#2e4c9b","#c77996","#f49c6b","#fdc835","#f1e95e") , 
+    layout_type         = "spring",
+    repulse.rad_power   = 2.89,
+    max.delta_mult      = 0.006,
+    coeff  = 0.48,
+    coeff1= 0.51,
+    rotation=NULL,
+    cool.exp=NULL
+) {
+  
+  ## ---------- sanity checks & fall-backs ----------
+  stopifnot(is.matrix(conn_strength_clean) || is.data.frame(conn_strength_clean))
+  
+  # 1. Handle missing cluster_members  ----------------------------------------
+  if (is.null(cluster_members)) {
+    cluster_members <- rep(1, nrow(conn_strength_clean))          # all cells same cluster
+    names(cluster_members) <- rownames(conn_strength_clean)
+  }
+  
+  
+  conn_strength_clean_sel=conn_strength_clean
+  ## ---------- build qgraph ---------------------------------------------------
+  qg <- qgraph::qgraph(
+    conn_strength_clean_sel,
+    layout     = layout_type,
+    filetype   = if (is.null(output_path)) "none" else "pdf",
+    filename   = if (is.null(output_path)) NULL
+    else file.path(output_path,
+                   paste0("qgraph_", filename_prefix, ".pdf")),
+    layout.par = list(
+      repulse.rad = nrow(conn_strength_clean_sel) ^ repulse.rad_power,
+      max.delta   = nrow(conn_strength_clean_sel) * max.delta_mult
+    )
+  )
+  
+  ## ---------- translate qgraph → ggplot --------------------------------------
+  bundle__ <- do.call(
+    rbind,
+    lapply(seq_len(length(qg$Edgelist$to)), function(i) {
+      data.frame(
+        x     = c(qg$layout[qg$Edgelist$from[i], 1],
+                  qg$layout[qg$Edgelist$to[i]  , 1]),
+        y     = c(qg$layout[qg$Edgelist$from[i], 2],
+                  qg$layout[qg$Edgelist$to[i]  , 2]),
+        group = i
+      )
+    })
+  )
+  
+  layout_df <- data.frame(
+    x   = qg$layout[, 1],
+    y   = qg$layout[, 2],
+    col = as.factor(cluster_members)
+  )
+  
+  
+  
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_path(data = bundle__, ggplot2::aes(x, y, group = group),
+                       colour = "#ffffff", size = 1.5 * coeff1) +
+    ggplot2::geom_path(data = bundle__, ggplot2::aes(x, y, group = group),
+                       colour = "#121212", alpha = 0.5, size = 0.9 * coeff1) +
+    ggplot2::geom_point(data = layout_df, ggplot2::aes(x, y),
+                        colour = "#212121", size = 3.8 * coeff) +
+    ggplot2::theme_void() +
+    ggplot2::geom_point(data = layout_df,
+                        ggplot2::aes(x, y, colour = col),
+                        size = 3.0 * coeff) +
+    ggplot2::scale_colour_manual(
+      values = interpolate_colors(colorscheme,length(unique(layout_df$col)) ))  #grDevices::colorRampPalette(RColorBrewer::brewer.pal(11, "Spectral"))(
+  #1 + length(unique(layout_df$col)))
+  
+  ## ---------- save (only if requested) ---------------------------------------
+  # if (!is.null(output_path)) {
+  #   ggplot2::ggsave(
+  #     filename = file.path(output_path,
+  #                          paste0(filename_prefix, ".pdf")),
+  #     plot     = p,
+  #     width    = 10, height = 10, units = "in", dpi = 300
+  #   )
+  # }
+  
+  invisible(list(
+    qgraph            = qg,
+    ggplot            = p
+  ))
+}
+
+                
