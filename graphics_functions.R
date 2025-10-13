@@ -2,6 +2,9 @@
 library(ggplot2)
 library(scales)
 library(grid)
+library(dplyr)
+library(tidyr)
+library(tibble)
 # package imports ----------------------------------------------------
 #' @import ggplot2
 #' @importFrom scales breaks_pretty squish hue_pal
