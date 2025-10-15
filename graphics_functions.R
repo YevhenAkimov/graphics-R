@@ -64,7 +64,8 @@ rgb_to_hex <- function(rgb) {
 #' interpolate_colors(c("#000000", "#FFFFFF"), 5)
 #' @export
 interpolate_colors <- function(original_colors, n) {
-  stopifnot(is.numeric(n), n > 1)
+  stopifnot(is.numeric(n))
+  if (n==1) {return(original_colors[1])}
   n_original <- length(original_colors)
   interpolated_colors <- character(n)
   
