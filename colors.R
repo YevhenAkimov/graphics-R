@@ -33,7 +33,10 @@ colorscheme_Classic10Medium = palettes[["Classic 10 Medium"]]$value
 colorscheme_Miller_Stone = ggthemes::ggthemes_data[["tableau"]][["color-palettes"]][["regular"]][["Miller Stone"]]$value
 colorscheme_Superfishel_Stone = palettes[["Superfishel Stone"]]$value
 
-
+BlDark2=c("#332874", "#6B579B" , "#B2A7D2" )
+RdDark2=c("#621E1E", "#955D56" , "#CBAEA8")
+spectral_half=c("#e6f598","#abdda4","#66c2a5","#3288bd","#5e4fa2")
+Blues3=c("#FCFCFC", "#DCE3F1", "#BDCAE6" ,"#9CB2DA" ,"#7A9BCF" ,"#5484C5" ,"#366EAE" ,"#2A588D" ,"#1F436C"  )
 
 cls=c("#1C1F33","#4E4187","#9e0142")
 Teal        = c('#d1eeea','#a8dbd9','#85c4c9','#68abb8','#4f90a6','#3b738f','#2a5674')
